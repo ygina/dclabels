@@ -1,4 +1,6 @@
 use std::fmt;
+use std::collections::hash_map::DefaultHasher;
+use std::hash::{Hash, Hasher};
 
 pub type SetTag = u64;
 pub type ByteString = Vec<u8>;
@@ -7,18 +9,29 @@ pub type ByteString = Vec<u8>;
 /// a string.  The interpretation of principal strings is up to the
 /// application.  Reasonable schemes include encoding user names,
 /// domain names, and/or URLs in the 'Principal' type.
-#[derive(PartialEq, Eq, PartialOrd, Ord, Debug, Hash)]
-pub struct Principal {
-    name: String,
+#[derive(PartialEq, Eq, PartialOrd, Ord, Debug, Hash, Clone)]
+pub struct Principal<'a> {
+    name: &'a [u8],
     tag: SetTag,
 }
 
-impl Principal {
+impl<'a> Principal<'a> {
     /// Create a principal from a 'String'.  The 'String' is packed into
     /// a 'S.ByteString' using 'fromString', which will almost certainly
     /// give unexpected results for non-ASCII unicode code points.
-    pub fn new(name: String) -> Self {
-        unimplemented!()
+    pub fn new(name: &'a str) -> Self {
+        let mut hasher = DefaultHasher::new();
+        name.hash(&mut hasher);
+        let hv = hasher.finish();
+        // TODO: verify bloom filter calculation
+        let bloom = (hv & 0x3f) | ((hv >> 6) & 0x3f) | ((hv >> 12) & 0x3f);
+        // let bloom = bit (hv .&. 0x3f)
+        //         .|. (bit $ shiftR hv 6 .&. 0x3f)
+        //         .|. (bit $ shiftR hv 12 .&. 0x3f);
+        Self {
+            name: name.as_bytes(),
+            tag: bloom,
+        }
     }
 
     pub fn read(&self) {
@@ -29,7 +42,7 @@ impl Principal {
     }
 }
 
-impl Into<ByteString> for Principal {
+impl<'a> Into<ByteString> for Principal<'a> {
     /// Extract the name of a principal as a strict 'S.ByteString'.
     /// (Use 'show' to get it as a regular 'String'.)
     fn into(self) -> ByteString {
@@ -37,16 +50,17 @@ impl Into<ByteString> for Principal {
     }
 }
 
-impl Into<Principal> for ByteString {
+impl<'a> Into<Principal<'a>> for ByteString {
     /// Create a principal from a strict 'S.ByteString'.
-    fn into(self) -> Principal {
+    fn into(self) -> Principal<'a> {
         unimplemented!()
     }
 }
 
-impl fmt::Display for Principal {
+impl<'a> fmt::Display for Principal<'a> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "{}", self.name)
+        // write!(f, "{}", self.name)
+        unimplemented!()
     }
 }
 
@@ -55,12 +69,12 @@ impl fmt::Display for Principal {
 /// @Disjunction@s unless you need to serialize and de-serialize them
 /// (by means of 'dToSet' and 'dFromList').
 #[derive(PartialEq, Eq, PartialOrd, Ord, Hash)]
-pub struct Disjunction {
-    ps: Vec<Principal>,
+pub struct Disjunction<'a> {
+    ps: Vec<Principal<'a>>,
     tag: SetTag,
 }
 
-impl Disjunction {
+impl<'a> Disjunction<'a> {
     pub fn as_false() -> Self {
         // dFalse = Disjunction Set.empty 0
         unimplemented!()
@@ -71,13 +85,13 @@ impl Disjunction {
         unimplemented!()
     }
 
-    pub fn union(self, other: Disjunction) -> Disjunction {
+    pub fn union(self, other: Disjunction<'a>) -> Disjunction<'a> {
         // dUnion (Disjunction ps1 t1) (Disjunction ps2 t2) =
         //   Disjunction (Set.union ps1 ps2) (t1 .|. t2)
         unimplemented!()
     }
 
-    pub fn implies(&self, other: &Disjunction) -> bool {
+    pub fn implies(&self, other: &Disjunction<'a>) -> bool {
         // dImplies (Disjunction ps1 t1) (Disjunction ps2 t2)
         //   | t1 .&. t2 /= t1 = False
         //   | otherwise       = ps1 `Set.isSubsetOf` ps2
@@ -86,11 +100,11 @@ impl Disjunction {
 
     /// Expose the set of 'Principal's being ORed together in a
     /// 'Disjunction'.
-    pub fn to_set(&self) -> &Vec<Principal> {
+    pub fn to_set(&self) -> &Vec<Principal<'a>> {
         &self.ps
     }
 
-    pub fn insert(&self, cnf: CNF) -> CNF {
+    pub fn insert(&self, cnf: CNF<'a>) -> CNF<'a> {
         // cInsert :: Disjunction -> CNF -> CNF
         // cInsert dnew c@(CNF ds)
         //   | setAny (`dImplies` dnew) ds = c
@@ -99,7 +113,7 @@ impl Disjunction {
     }
 }
 
-impl fmt::Display for Disjunction {
+impl<'a> fmt::Display for Disjunction<'a> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         // showsPrec _ (Disjunction ps _)
         //   | Set.size ps == 0 = ("False" ++)
@@ -110,7 +124,7 @@ impl fmt::Display for Disjunction {
     }
 }
 
-impl fmt::Debug for Disjunction {
+impl<'a> fmt::Debug for Disjunction<'a> {
     /// Note that a disjunction containing more than one element /must/
     /// be surrounded by parentheses to parse correctly.
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
@@ -129,9 +143,9 @@ impl fmt::Debug for Disjunction {
 
 }
 
-impl Into<Disjunction> for Vec<Principal> {
+impl<'a> Into<Disjunction<'a>> for Vec<Principal<'a>> {
     /// Convert a list of 'Principal's into a 'Disjunction'.
-    fn into(self) -> Disjunction {
+    fn into(self) -> Disjunction<'a> {
         unimplemented!()
     }
 }
@@ -140,12 +154,12 @@ impl Into<Disjunction> for Vec<Principal> {
 /// describe 'DCLabel' privileges, as well to provide each of the two
 /// halves of a 'DCLabel'.
 #[derive(PartialEq, Eq, PartialOrd, Ord, Hash)]
-pub struct CNF {
-    ds: Vec<Disjunction>,
+pub struct CNF<'a> {
+    ds: Vec<Disjunction<'a>>,
 }
 
-impl CNF {
-    pub fn new(ds: Vec<Disjunction>) -> Self {
+impl<'a> CNF<'a> {
+    pub fn new(ds: Vec<Disjunction<'a>>) -> Self {
         Self { ds }
     }
 
@@ -186,7 +200,7 @@ impl CNF {
         unimplemented!()
     }
 
-    pub fn singleton(d: Disjunction) -> Self {
+    pub fn singleton(d: Disjunction<'a>) -> Self {
         // cSingleton = CNF . Set.singleton
         unimplemented!()
     }
@@ -203,23 +217,23 @@ impl CNF {
         unimplemented!()
     }
 
-    pub fn union(self, other: CNF) -> CNF {
+    pub fn union(self, other: CNF<'a>) -> CNF<'a> {
         // cUnion c (CNF ds) = Set.foldr cInsert c ds
         unimplemented!()
     }
 
-    pub fn or(self, other: CNF) -> CNF {
+    pub fn or(self, other: CNF<'a>) -> CNF<'a> {
         // cOr (CNF ds1) (CNF ds2) =
         //   cFromList $ [dUnion d1 d2 | d1 <- Set.toList ds1, d2 <- Set.toList ds2]
         unimplemented!()
     }
 
-    pub fn implies(&self, other: &Disjunction) -> bool {
+    pub fn implies(&self, other: &Disjunction<'a>) -> bool {
         // cImplies1 (CNF ds) d = setAny (`dImplies` d) ds
         unimplemented!()
     }
 
-    pub fn implies_cnf(&self, other: &CNF) -> bool {
+    pub fn implies_cnf(&self, other: &CNF<'a>) -> bool {
         // cImplies c (CNF ds) = setAll (c `cImplies1`) ds
         unimplemented!()
     }
@@ -231,7 +245,7 @@ impl CNF {
     }
 }
 
-impl fmt::Display for CNF {
+impl<'a> fmt::Display for CNF<'a> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         // showsPrec d (CNF ds)
         //   | Set.size ds == 0 = ("True" ++)
@@ -242,7 +256,7 @@ impl fmt::Display for CNF {
     }
 }
 
-impl fmt::Debug for CNF {
+impl<'a> fmt::Debug for CNF<'a> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         // readPrec = true <++ formula <++ single
         //   where true = do True <- readPrec; return cTrue
@@ -263,38 +277,38 @@ impl fmt::Debug for CNF {
 // conjunctive normal form.  Class 'ToCNF' abstracts over the
 // differences between these types, promoting them all to 'CNF'.
 
-impl Into<CNF> for Vec<Disjunction> {
+impl<'a> Into<CNF<'a>> for Vec<Disjunction<'a>> {
     /// Convert a list of 'Disjunction's into a 'CNF'.  Mostly useful if
     /// you wish to de-serialize a 'CNF'.
-    fn into(self) -> CNF {
+    fn into(self) -> CNF<'a> {
         // cFromList = Set.foldr cInsert cTrue . Set.fromList
         unimplemented!()
     }
 }
 
-impl Into<CNF> for Disjunction {
-    fn into(self) -> CNF {
+impl<'a> Into<CNF<'a>> for Disjunction<'a> {
+    fn into(self) -> CNF<'a> {
         // instance ToCNF Disjunction where toCNF = cSingleton
         unimplemented!()
     }
 }
 
-impl Into<CNF> for Principal {
-    fn into(self) -> CNF {
+impl<'a> Into<CNF<'a>> for Principal<'a> {
+    fn into(self) -> CNF<'a> {
         // instance ToCNF Principal where toCNF = toCNF . dSingleton
         unimplemented!()
     }
 }
 
-impl Into<CNF> for String {
-    fn into(self) -> CNF {
+impl<'a> Into<CNF<'a>> for String {
+    fn into(self) -> CNF<'a> {
         // instance ToCNF [Char] where toCNF = toCNF . principal
         unimplemented!()
     }
 }
 
-impl Into<CNF> for bool {
-    fn into(self) -> CNF {
+impl<'a> Into<CNF<'a>> for bool {
+    fn into(self) -> CNF<'a> {
         // instance ToCNF Bool where
         //   toCNF True = cTrue
         //   toCNF False = cFalse

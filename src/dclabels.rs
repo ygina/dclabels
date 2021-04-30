@@ -35,18 +35,20 @@
 use std::fmt;
 use crate::logic::*;
 
+pub type Priv<'a> = CNF<'a>;
+
 #[derive(PartialEq, Eq, PartialOrd, Ord, Hash)]
-pub struct DCLabel {
+pub struct DCLabel<'a> {
     /// Describes the authority required to make
     /// the data public.
-    dc_secrecy: CNF,
+    dc_secrecy: CNF<'a>,
     /// Describes the authority with which
     /// immutable data was endorsed, or the
     /// authority required to modify mutable data.
-    dc_integrity: CNF,
+    dc_integrity: CNF<'a>,
 }
 
-impl fmt::Display for DCLabel {
+impl<'a> fmt::Display for DCLabel<'a> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         // instance Show DCLabel where
         //   showsPrec d (DCLabel sec int) =
@@ -55,7 +57,7 @@ impl fmt::Display for DCLabel {
     }
 }
 
-impl fmt::Debug for DCLabel {
+impl<'a> fmt::Debug for DCLabel<'a> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         // instance Read DCLabel where
         //   readPrec = parens $ prec 5 $ do
@@ -88,7 +90,7 @@ impl fmt::Debug for DCLabel {
 // a \/ b = toCNF a `cOr` toCNF b
 // infixl 7 \/
 
-impl DCLabel {
+impl<'a> DCLabel<'a> {
     /// dcPublic = True %% True
     ///
     /// This label corresponds to public data with no integrity guarantees.
@@ -112,7 +114,7 @@ impl DCLabel {
     /// of 'ToCNF'.  @%%@ has fixity:
     ///
     /// > infix 6 %%
-    pub fn new<T: Into<CNF>, U: Into<CNF>>(secrecy: T, integrity: U) -> Self {
+    pub fn new<T: Into<CNF<'a>>, U: Into<CNF<'a>>>(secrecy: T, integrity: U) -> Self {
         // (%%) :: (ToCNF a, ToCNF b) => a -> b -> DCLabel
         // a %% b = toCNF a `DCLabel` toCNF b
         // infix 6 %%
@@ -132,8 +134,8 @@ impl DCLabel {
 //   {-# INLINE speaksFor #-}
 //   speaksFor = cImplies
 
-impl CNF {
-    pub fn dc_max_downgrade(label: &DCLabel) -> DCLabel {
+impl<'a> CNF<'a> {
+    pub fn dc_max_downgrade(label: &DCLabel<'a>) -> DCLabel<'a> {
         // dcMaxDowngrade p (DCLabel (CNF ds) int) = DCLabel sec (cUnion p int)
         //   where sec = CNF $ Set.filter (not . cImplies1 p) ds
         unimplemented!()
