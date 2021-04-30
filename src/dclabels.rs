@@ -33,6 +33,7 @@
 //!   if @(p '/\' s2) ``speaksFor`` s2 && (p '/\' i1) ``speaksFor``
 //!   i2@.
 use std::fmt;
+use std::ops::{BitOr, BitAnd, Rem};
 use crate::logic::*;
 
 pub type Priv<'a> = CNF<'a>;
@@ -69,26 +70,25 @@ impl<'a> fmt::Debug for DCLabel<'a> {
     }
 }
 
-// /// | Compute a conjunction of two 'CNF's or 'ToCNF' instances.
-// ///
-// /// Has fixity:
-// ///
-// /// > infixr 7 /\
-// (/\) :: (ToCNF a, ToCNF b) => a -> b -> CNF
-// a /\ b = toCNF a `cUnion` toCNF b
-// infixr 7 /\
+impl<'a> BitAnd for CNF<'a> {
+    type Output = Self;
 
-// /// | Compute a disjunction of two 'CNF's or 'ToCNF' instances.  Note
-// /// that this can be an expensive operation if the inputs have many
-// /// conjunctions.
-// ///
-// /// The fixity is specifically chosen so that @&#92;&#47;@ and '/\'
-// /// cannot be mixed in the same expression without parentheses:
-// ///
-// /// > infixl 7 \/
-// (\/) :: (ToCNF a, ToCNF b) => a -> b -> CNF
-// a \/ b = toCNF a `cOr` toCNF b
-// infixl 7 \/
+    /// Compute a conjunction of two 'CNF's or 'ToCNF' instances.
+    fn bitand(self, rhs: Self) -> Self::Output {
+        self.union(rhs)
+    }
+}
+
+impl<'a> BitOr for CNF<'a> {
+    type Output = Self;
+
+    /// Compute a disjunction of two 'CNF's or 'ToCNF' instances.  Note
+    /// that this can be an expensive operation if the inputs have many
+    /// conjunctions.
+    fn bitor(self, rhs: Self) -> Self::Output {
+        self.or(rhs)
+    }
+}
 
 impl<'a> DCLabel<'a> {
     /// dcPublic = True %% True
