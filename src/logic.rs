@@ -9,7 +9,7 @@ pub type ByteString = [u8];
 /// a string.  The interpretation of principal strings is up to the
 /// application.  Reasonable schemes include encoding user names,
 /// domain names, and/or URLs in the 'Principal' type.
-#[derive(PartialEq, Eq, PartialOrd, Ord, Hash, Clone)]
+#[derive(PartialEq, Eq, PartialOrd, Ord, Hash, Clone, Debug)]
 pub struct Principal<'a> {
     name: &'a [u8],
     tag: SetTag,
@@ -20,18 +20,7 @@ impl<'a> Into<Principal<'a>> for &'a str {
     /// a 'S.ByteString' using 'fromString', which will almost certainly
     /// give unexpected results for non-ASCII unicode code points.
     fn into(self) -> Principal<'a> {
-        let mut hasher = DefaultHasher::new();
-        self.hash(&mut hasher);
-        let hv = hasher.finish();
-        // TODO: verify bloom filter calculation
-        let bloom = (hv & 0x3f) | ((hv >> 6) & 0x3f) | ((hv >> 12) & 0x3f);
-        // let bloom = bit (hv .&. 0x3f)
-        //         .|. (bit $ shiftR hv 6 .&. 0x3f)
-        //         .|. (bit $ shiftR hv 12 .&. 0x3f);
-        Principal {
-            name: self.as_bytes(),
-            tag: bloom,
-        }
+        self.as_bytes().into()
     }
 }
 
@@ -39,31 +28,27 @@ impl<'a> Into<&'a ByteString> for Principal<'a> {
     /// Extract the name of a principal as a strict 'S.ByteString'.
     /// (Use 'show' to get it as a regular 'String'.)
     fn into(self) -> &'a ByteString {
-        unimplemented!()
+        self.name
     }
 }
 
 impl<'a> Into<Principal<'a>> for &'a ByteString {
     /// Create a principal from a strict 'S.ByteString'.
     fn into(self) -> Principal<'a> {
-        unimplemented!()
+        let mut hasher = DefaultHasher::new();
+        self.hash(&mut hasher);
+        let hv = hasher.finish();
+        let bloom = (hv & 0x3f) | ((hv >> 6) & 0x3f) | ((hv >> 12) & 0x3f);
+        Principal {
+            name: self,
+            tag: bloom,
+        }
     }
 }
 
 impl<'a> fmt::Display for Principal<'a> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        // write!(f, "{}", self.name)
-        unimplemented!()
-    }
-}
-
-impl<'a> fmt::Debug for Principal<'a> {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        // readsPrec d s = do
-        //   (name, rest) <- readsPrec d s
-        //   return (principalBS name, rest)
-        // write!(f, "{}", self.name)
-        unimplemented!()
+        write!(f, "{}", std::str::from_utf8(self.name).unwrap())
     }
 }
 
