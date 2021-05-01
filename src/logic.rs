@@ -3,54 +3,47 @@ use std::collections::hash_map::DefaultHasher;
 use std::hash::{Hash, Hasher};
 
 pub type SetTag = u64;
-pub type ByteString = Vec<u8>;
+pub type ByteString = [u8];
 
 /// A @Principal@ is a primitive source of authority, represented as
 /// a string.  The interpretation of principal strings is up to the
 /// application.  Reasonable schemes include encoding user names,
 /// domain names, and/or URLs in the 'Principal' type.
-#[derive(PartialEq, Eq, PartialOrd, Ord, Debug, Hash, Clone)]
+#[derive(PartialEq, Eq, PartialOrd, Ord, Hash, Clone)]
 pub struct Principal<'a> {
     name: &'a [u8],
     tag: SetTag,
 }
 
-impl<'a> Principal<'a> {
+impl<'a> Into<Principal<'a>> for &'a str {
     /// Create a principal from a 'String'.  The 'String' is packed into
     /// a 'S.ByteString' using 'fromString', which will almost certainly
     /// give unexpected results for non-ASCII unicode code points.
-    pub fn new(name: &'a str) -> Self {
+    fn into(self) -> Principal<'a> {
         let mut hasher = DefaultHasher::new();
-        name.hash(&mut hasher);
+        self.hash(&mut hasher);
         let hv = hasher.finish();
         // TODO: verify bloom filter calculation
         let bloom = (hv & 0x3f) | ((hv >> 6) & 0x3f) | ((hv >> 12) & 0x3f);
         // let bloom = bit (hv .&. 0x3f)
         //         .|. (bit $ shiftR hv 6 .&. 0x3f)
         //         .|. (bit $ shiftR hv 12 .&. 0x3f);
-        Self {
-            name: name.as_bytes(),
+        Principal {
+            name: self.as_bytes(),
             tag: bloom,
         }
     }
-
-    pub fn read(&self) {
-        // readsPrec d s = do
-        //   (name, rest) <- readsPrec d s
-        //   return (principalBS name, rest)
-        unimplemented!()
-    }
 }
 
-impl<'a> Into<ByteString> for Principal<'a> {
+impl<'a> Into<&'a ByteString> for Principal<'a> {
     /// Extract the name of a principal as a strict 'S.ByteString'.
     /// (Use 'show' to get it as a regular 'String'.)
-    fn into(self) -> ByteString {
+    fn into(self) -> &'a ByteString {
         unimplemented!()
     }
 }
 
-impl<'a> Into<Principal<'a>> for ByteString {
+impl<'a> Into<Principal<'a>> for &'a ByteString {
     /// Create a principal from a strict 'S.ByteString'.
     fn into(self) -> Principal<'a> {
         unimplemented!()
@@ -59,6 +52,16 @@ impl<'a> Into<Principal<'a>> for ByteString {
 
 impl<'a> fmt::Display for Principal<'a> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        // write!(f, "{}", self.name)
+        unimplemented!()
+    }
+}
+
+impl<'a> fmt::Debug for Principal<'a> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        // readsPrec d s = do
+        //   (name, rest) <- readsPrec d s
+        //   return (principalBS name, rest)
         // write!(f, "{}", self.name)
         unimplemented!()
     }
