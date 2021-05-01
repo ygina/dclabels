@@ -300,7 +300,7 @@ impl<'a> Into<CNF<'a>> for Principal<'a> {
     }
 }
 
-impl<'a> Into<CNF<'a>> for String {
+impl<'a> Into<CNF<'a>> for &'a str {
     fn into(self) -> CNF<'a> {
         // instance ToCNF [Char] where toCNF = toCNF . principal
         unimplemented!()

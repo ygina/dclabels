@@ -1,15 +1,11 @@
 use dclabels::*;
 
-fn x<'a>(obj: impl Into<CNF<'a>>) -> CNF<'a> {
-    obj.into()
-}
-
 fn main() {
     // Simple secrecy component example
-    let alice = x(Principal::new("alice"));
-    let bob   = x(Principal::new("bob"));
-    let carla = x(Principal::new("carla"));
-    let djon  = x(Principal::new("djon"));
+    let alice : CNF = "alice".into();
+    let bob : CNF   = "bob".into();
+    let carla : CNF = "carla".into();
+    let djon : CNF  = "djon".into();
 
     let s: CNF =  (alice | bob) & carla;
     // // Simple integrity component example
