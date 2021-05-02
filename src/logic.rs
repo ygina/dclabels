@@ -58,7 +58,7 @@ impl<'a> fmt::Display for Principal<'a> {
 /// 'CNF'.  There is generally not much need to work directly with
 /// @Disjunction@s unless you need to serialize and de-serialize them
 /// (by means of 'dToSet' and 'dFromList').
-#[derive(PartialEq)]
+#[derive(PartialEq, Clone)]
 pub struct Disjunction<'a> {
     ps: BTreeSet<Principal<'a>>,
     tag: SetTag,
@@ -85,12 +85,11 @@ impl<'a> Disjunction<'a> {
         }
     }
 
-    pub fn union(&self, other: &Disjunction<'a>) -> Disjunction<'a> {
-        let mut ps = self.ps.clone();
-        ps.extend(other.ps.clone());
+    pub fn union(mut self, other: Disjunction<'a>) -> Disjunction<'a> {
+        self.ps.extend(other.ps);
         Disjunction {
             tag: self.tag | other.tag,
-            ps,
+            ps: self.ps,
         }
     }
 
@@ -183,6 +182,27 @@ pub struct CNF<'a> {
     ds: BTreeSet<Disjunction<'a>>,
 }
 
+
+pub fn set_any<T>(prd: fn(T) -> bool, set: BTreeSet<T>) -> bool {
+    // set.into_iter().fold(false, |res, elem| res || prd(elem))
+    for elem in set {
+        if prd(elem) {
+            return true;
+        }
+    }
+    false
+}
+
+pub fn set_all<T>(prd: fn(T) -> bool, set: BTreeSet<T>) -> bool {
+    // set.into_iter().fold(true, |res, elem| res && prd(elem))
+    for elem in set {
+        if !prd(elem) {
+            return false;
+        }
+    }
+    true
+}
+
 impl<'a> CNF<'a> {
     pub fn new(ds: BTreeSet<Disjunction<'a>>) -> Self {
         Self { ds }
@@ -234,45 +254,48 @@ impl<'a> CNF<'a> {
         CNF { ds: vec![d].into_iter().collect() }
     }
 
-    pub fn set_any() {
-        // setAny :: (a -> Bool) -> Set a -> Bool
-        // setAny prd = Set.foldr' (\a -> (prd a ||)) False
-        unimplemented!()
-    }
-
-    pub fn set_all() {
-        // setAll :: (a -> Bool) -> Set a -> Bool
-        // setAll prd = Set.foldr' (\a -> (prd a &&)) True
-        unimplemented!()
-    }
-
-    pub fn insert(&self, d: Disjunction<'a>) -> CNF<'a> {
-        // cInsert :: Disjunction -> CNF -> CNF
-        // cInsert dnew c@(CNF ds)
-        //   | setAny (`dImplies` dnew) ds = c
-        //   | otherwise = CNF $ Set.insert dnew $ Set.filter (not . (dnew `dImplies`)) ds
-        unimplemented!()
+    pub fn insert(mut self, dnew: Disjunction<'a>) -> CNF<'a> {
+        for d in &self.ds {
+            if d.implies(&dnew) {
+                return self;
+            }
+        }
+        self.ds = self.ds.into_iter().filter(|d| !dnew.implies(&d)).collect();
+        self.ds.insert(dnew);
+        self
     }
 
     pub fn union(self, other: CNF<'a>) -> CNF<'a> {
-        // cUnion c (CNF ds) = Set.foldr cInsert c ds
-        unimplemented!()
+        other.ds.into_iter().fold(self, |cnf, d| cnf.insert(d))
     }
 
     pub fn or(self, other: CNF<'a>) -> CNF<'a> {
-        // cOr (CNF ds1) (CNF ds2) =
-        //   cFromList $ [dUnion d1 d2 | d1 <- Set.toList ds1, d2 <- Set.toList ds2]
-        unimplemented!()
+        // TODO: unnecessary clones
+        self.ds.into_iter().flat_map(|d1| {
+            other.ds.iter().map(move |d2| d1.clone().union(d2.clone()))
+        })
+        .collect::<Vec<_>>()
+        .into()
     }
 
-    pub fn implies(&self, other: &Disjunction<'a>) -> bool {
+    pub fn implies1(&self, d2: &Disjunction<'a>) -> bool {
         // cImplies1 (CNF ds) d = setAny (`dImplies` d) ds
-        unimplemented!()
+        for d1 in &self.ds {
+            if d1.implies(d2) {
+                return true;
+            }
+        }
+        false
     }
 
-    pub fn implies_cnf(&self, other: &CNF<'a>) -> bool {
+    pub fn implies(&self, cnf: &CNF<'a>) -> bool {
         // cImplies c (CNF ds) = setAll (c `cImplies1`) ds
-        unimplemented!()
+        for d in &cnf.ds {
+            if !self.implies1(d) {
+                return false;
+            }
+        }
+        true
     }
 }
 
@@ -320,7 +343,7 @@ impl<'a> fmt::Debug for CNF<'a> {
 // conjunctive normal form.  Class 'ToCNF' abstracts over the
 // differences between these types, promoting them all to 'CNF'.
 
-impl<'a> Into<CNF<'a>> for BTreeSet<Disjunction<'a>> {
+impl<'a> Into<CNF<'a>> for Vec<Disjunction<'a>> {
     /// Convert a list of 'Disjunction's into a 'CNF'.  Mostly useful if
     /// you wish to de-serialize a 'CNF'.
     fn into(self) -> CNF<'a> {
@@ -349,15 +372,13 @@ impl<'a> Into<CNF<'a>> for &'a str {
 
 impl<'a> Into<CNF<'a>> for bool {
     fn into(self) -> CNF<'a> {
-        if (self) {
+        if self {
             CNF::as_true()
         } else {
             CNF::as_false()
         }
     }
 }
-
-// instance ToCNF (Priv CNF) where toCNF = privDesc
 
 #[cfg(test)]
 mod test {
