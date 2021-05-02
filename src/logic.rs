@@ -227,13 +227,11 @@ impl<'a> CNF<'a> {
     /// which can in turn use 'delegate' to create arbitrary finite
     /// privileges to pass to less privileged code.
     pub fn as_false() -> Self {
-        // cFalse = CNF $ Set.singleton dFalse
-        unimplemented!()
+        CNF { ds: vec![Disjunction::as_false()].into_iter().collect() }
     }
 
     pub fn singleton(d: Disjunction<'a>) -> Self {
-        // cSingleton = CNF . Set.singleton
-        unimplemented!()
+        CNF { ds: vec![d].into_iter().collect() }
     }
 
     pub fn set_any() {
@@ -280,27 +278,39 @@ impl<'a> CNF<'a> {
 
 impl<'a> fmt::Display for CNF<'a> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        // showsPrec d (CNF ds)
-        //   | Set.size ds == 0 = ("True" ++)
-        //   | Set.size ds == 1 = shows $ Set.findMin ds
-        //   | otherwise = showParen (d > 7) $
-        //       foldr1 (\l r -> l . (" /\\ " ++) . r) $ map shows $ Set.toList ds
-        unimplemented!()
+        match self.ds.len() {
+            0 => write!(f, "True"),
+            1 => write!(f, "{}", self.ds.iter().next().unwrap()),
+            len => {
+                let mut ds: Vec<_> = self.ds.iter().collect();
+                ds.sort();
+                write!(f, "({}", ds[0])?;
+                for i in 1..len {
+                    write!(f, " /\\ {}", ds[i])?;
+                }
+                write!(f, ")")?;
+                Ok(())
+            }
+        }
     }
 }
 
 impl<'a> fmt::Debug for CNF<'a> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        // readPrec = true <++ formula <++ single
-        //   where true = do True <- readPrec; return cTrue
-        //         single = cSingleton <$> readPrec
-        //         formula = parens $ prec 7 $ do
-        //           let next = do Symbol "/\\" <- lexP
-        //                         next'
-        //                      <++ return []
-        //               next' = ((:) <$> readPrec) `ap` next
-        //           cFromList <$> next'
-        unimplemented!()
+        match self.ds.len() {
+            0 => write!(f, "True"),
+            1 => write!(f, "{:?}", self.ds.iter().next().unwrap()),
+            len => {
+                let mut ds: Vec<_> = self.ds.iter().collect();
+                ds.sort();
+                write!(f, "({:?}", ds[0])?;
+                for i in 1..len {
+                    write!(f, " /\\ {:?}", ds[i])?;
+                }
+                write!(f, ")")?;
+                Ok(())
+            }
+        }
     }
 }
 
@@ -310,42 +320,40 @@ impl<'a> fmt::Debug for CNF<'a> {
 // conjunctive normal form.  Class 'ToCNF' abstracts over the
 // differences between these types, promoting them all to 'CNF'.
 
-impl<'a> Into<CNF<'a>> for Vec<Disjunction<'a>> {
+impl<'a> Into<CNF<'a>> for BTreeSet<Disjunction<'a>> {
     /// Convert a list of 'Disjunction's into a 'CNF'.  Mostly useful if
     /// you wish to de-serialize a 'CNF'.
     fn into(self) -> CNF<'a> {
-        // cFromList = Set.foldr cInsert cTrue . Set.fromList
-        unimplemented!()
+        self.into_iter().fold(CNF::as_true(), |cnf, d| cnf.insert(d))
     }
 }
 
 impl<'a> Into<CNF<'a>> for Disjunction<'a> {
     fn into(self) -> CNF<'a> {
-        // instance ToCNF Disjunction where toCNF = cSingleton
-        unimplemented!()
+        CNF::singleton(self)
     }
 }
 
 impl<'a> Into<CNF<'a>> for Principal<'a> {
     fn into(self) -> CNF<'a> {
-        // instance ToCNF Principal where toCNF = toCNF . dSingleton
-        unimplemented!()
+        Disjunction::singleton(self).into()
     }
 }
 
 impl<'a> Into<CNF<'a>> for &'a str {
     fn into(self) -> CNF<'a> {
-        // instance ToCNF [Char] where toCNF = toCNF . principal
-        unimplemented!()
+        let p: Principal = self.into();
+        p.into()
     }
 }
 
 impl<'a> Into<CNF<'a>> for bool {
     fn into(self) -> CNF<'a> {
-        // instance ToCNF Bool where
-        //   toCNF True = cTrue
-        //   toCNF False = cFalse
-        unimplemented!()
+        if (self) {
+            CNF::as_true()
+        } else {
+            CNF::as_false()
+        }
     }
 }
 
