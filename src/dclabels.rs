@@ -38,7 +38,7 @@ use crate::logic::*;
 
 pub type Priv<'a> = CNF<'a>;
 
-#[derive(PartialEq, Eq, PartialOrd, Ord, Hash)]
+#[derive(PartialEq, Eq, PartialOrd, Ord)]
 pub struct DCLabel<'a> {
     /// Describes the authority required to make
     /// the data public.

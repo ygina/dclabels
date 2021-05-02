@@ -1,5 +1,7 @@
+use std::cmp;
 use std::fmt;
 use std::collections::hash_map::DefaultHasher;
+use std::collections::HashSet;
 use std::hash::{Hash, Hasher};
 
 pub type SetTag = u64;
@@ -56,59 +58,89 @@ impl<'a> fmt::Display for Principal<'a> {
 /// 'CNF'.  There is generally not much need to work directly with
 /// @Disjunction@s unless you need to serialize and de-serialize them
 /// (by means of 'dToSet' and 'dFromList').
-#[derive(PartialEq, Eq, PartialOrd, Ord, Hash)]
+#[derive(PartialEq)]
 pub struct Disjunction<'a> {
-    ps: Vec<Principal<'a>>,
+    ps: HashSet<Principal<'a>>,
     tag: SetTag,
 }
 
 impl<'a> Disjunction<'a> {
-    pub fn as_false() -> Self {
-        // dFalse = Disjunction Set.empty 0
-        unimplemented!()
-    }
-
-    pub fn singleton(p: Principal) -> Self {
-        // dSingleton p@(Principal _ t) = Disjunction (Set.singleton p) t
-        unimplemented!()
-    }
-
-    pub fn union(self, other: Disjunction<'a>) -> Disjunction<'a> {
-        // dUnion (Disjunction ps1 t1) (Disjunction ps2 t2) =
-        //   Disjunction (Set.union ps1 ps2) (t1 .|. t2)
-        unimplemented!()
-    }
-
-    pub fn implies(&self, other: &Disjunction<'a>) -> bool {
-        // dImplies (Disjunction ps1 t1) (Disjunction ps2 t2)
-        //   | t1 .&. t2 /= t1 = False
-        //   | otherwise       = ps1 `Set.isSubsetOf` ps2
-        unimplemented!()
-    }
-
     /// Expose the set of 'Principal's being ORed together in a
     /// 'Disjunction'.
-    pub fn to_set(&self) -> &Vec<Principal<'a>> {
+    pub fn to_set(&self) -> &HashSet<Principal<'a>> {
         &self.ps
     }
 
-    pub fn insert(&self, cnf: CNF<'a>) -> CNF<'a> {
-        // cInsert :: Disjunction -> CNF -> CNF
-        // cInsert dnew c@(CNF ds)
-        //   | setAny (`dImplies` dnew) ds = c
-        //   | otherwise = CNF $ Set.insert dnew $ Set.filter (not . (dnew `dImplies`)) ds
-        unimplemented!()
+    pub fn as_false() -> Self {
+        Disjunction {
+            tag: 0,
+            ps: HashSet::new(),
+        }
+    }
+
+    pub fn singleton(p: Principal<'a>) -> Self {
+        Disjunction {
+            tag: p.tag,
+            ps: vec![p].into_iter().collect(),
+        }
+    }
+
+    pub fn union(&self, other: &Disjunction<'a>) -> Disjunction<'a> {
+        let mut ps = self.ps.clone();
+        ps.extend(other.ps.clone());
+        Disjunction {
+            tag: self.tag | other.tag,
+            ps,
+        }
+    }
+
+    /// Returns 'True' iff the first disjunction is a subset of the second.
+    pub fn implies(&self, other: &Disjunction<'a>) -> bool {
+        if self.tag & other.tag != self.tag {
+            false
+        } else {
+            self.ps.is_subset(&other.ps)
+        }
+    }
+}
+
+impl<'a> cmp::Eq for Disjunction<'a> {}
+
+impl<'a> cmp::PartialOrd for Disjunction<'a> {
+    fn partial_cmp(&self, other: &Self) -> Option<cmp::Ordering> {
+        Some(self.cmp(other))
+    }
+}
+
+impl<'a> cmp::Ord for Disjunction<'a> {
+    fn cmp(&self, other: &Self) -> cmp::Ordering {
+        match self.ps.len().cmp(&other.ps.len()) {
+            cmp::Ordering::Equal => {
+                let ps1: Vec<_> = self.ps.iter().collect();
+                let ps2: Vec<_> = other.ps.iter().collect();
+                ps1.cmp(&ps2)
+            }
+            ordering => ordering,
+        }
     }
 }
 
 impl<'a> fmt::Display for Disjunction<'a> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        // showsPrec _ (Disjunction ps _)
-        //   | Set.size ps == 0 = ("False" ++)
-        //   | Set.size ps == 1 = shows $ Set.findMin ps
-        //   | otherwise = showParen True $
-        //       foldr1 (\l r -> l . (" \\/ " ++) . r) $ map shows $ Set.toList ps
-        unimplemented!()
+        match self.ps.len() {
+            0 => write!(f, "False"),
+            1 => write!(f, "{}", self.ps.iter().next().unwrap()),
+            len => {
+                let mut ps: Vec<_> = self.ps.iter().collect();
+                ps.sort();
+                write!(f, "({}", ps[0])?;
+                for i in 1..len {
+                    write!(f, " \\/ {}", ps[i])?;
+                }
+                write!(f, ")")?;
+                Ok(())
+            }
+        }
     }
 }
 
@@ -116,32 +148,37 @@ impl<'a> fmt::Debug for Disjunction<'a> {
     /// Note that a disjunction containing more than one element /must/
     /// be surrounded by parentheses to parse correctly.
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        // instance Read Disjunction where
-        //   readPrec = false <++ clause <++ single
-        //     where false = do False <- readPrec; return dFalse
-        //           single = dSingleton <$> readPrec
-        //           clause = parens $ prec minPrec $ do
-        //             let next = do Symbol "\\/" <- lexP
-        //                           next'
-        //                        <++ return []
-        //                 next' = ((:) <$> readPrec) `ap` next
-        //             dFromList <$> next'
-        unimplemented!()
+        match self.ps.len() {
+            0 => write!(f, "False"),
+            1 => write!(f, "{:?}", self.ps.iter().next().unwrap()),
+            len => {
+                let mut ps: Vec<_> = self.ps.iter().collect();
+                ps.sort();
+                write!(f, "({:?}", ps[0])?;
+                for i in 1..len {
+                    write!(f, " \\/ {:?}", ps[i])?;
+                }
+                write!(f, ")")?;
+                Ok(())
+            }
+        }
     }
-
 }
 
 impl<'a> Into<Disjunction<'a>> for Vec<Principal<'a>> {
     /// Convert a list of 'Principal's into a 'Disjunction'.
     fn into(self) -> Disjunction<'a> {
-        unimplemented!()
+        Disjunction {
+            tag: self.iter().fold(0, |tag, p| tag | p.tag),
+            ps: self.into_iter().collect(),
+        }
     }
 }
 
 /// A boolean formula in Conjunctive Normal Form.  @CNF@ is used to
 /// describe 'DCLabel' privileges, as well to provide each of the two
 /// halves of a 'DCLabel'.
-#[derive(PartialEq, Eq, PartialOrd, Ord, Hash)]
+#[derive(PartialEq, Eq, PartialOrd, Ord)]
 pub struct CNF<'a> {
     ds: Vec<Disjunction<'a>>,
 }
@@ -202,6 +239,14 @@ impl<'a> CNF<'a> {
     pub fn set_all() {
         // setAll :: (a -> Bool) -> Set a -> Bool
         // setAll prd = Set.foldr' (\a -> (prd a &&)) True
+        unimplemented!()
+    }
+
+    pub fn insert(&self, d: Disjunction<'a>) -> CNF<'a> {
+        // cInsert :: Disjunction -> CNF -> CNF
+        // cInsert dnew c@(CNF ds)
+        //   | setAny (`dImplies` dnew) ds = c
+        //   | otherwise = CNF $ Set.insert dnew $ Set.filter (not . (dnew `dImplies`)) ds
         unimplemented!()
     }
 
