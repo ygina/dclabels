@@ -4,8 +4,8 @@ use std::collections::hash_map::DefaultHasher;
 use std::collections::BTreeSet;
 use std::hash::{Hash, Hasher};
 
-pub type SetTag = u64;
-pub type ByteString = [u8];
+type SetTag = u64;
+type ByteString = [u8];
 
 /// A @Principal@ is a primitive source of authority, represented as
 /// a string.  The interpretation of principal strings is up to the
@@ -15,6 +15,12 @@ pub type ByteString = [u8];
 pub struct Principal<'a> {
     name: &'a [u8],
     tag: SetTag,
+}
+
+impl<'a> Principal<'a> {
+    pub fn new(name: &'a str) -> Self {
+        name.into()
+    }
 }
 
 impl<'a> Into<Principal<'a>> for &'a str {
@@ -65,6 +71,10 @@ pub struct Disjunction<'a> {
 }
 
 impl<'a> Disjunction<'a> {
+    pub fn new(ps: Vec<Principal<'a>>) -> Self {
+        ps.into()
+    }
+
     /// Expose the set of 'Principal's being ORed together in a
     /// 'Disjunction'.
     pub fn to_set(&self) -> &BTreeSet<Principal<'a>> {
@@ -183,7 +193,7 @@ pub struct CNF<'a> {
 }
 
 
-pub fn set_any<T>(prd: fn(T) -> bool, set: BTreeSet<T>) -> bool {
+fn _set_any<T>(prd: fn(T) -> bool, set: BTreeSet<T>) -> bool {
     // set.into_iter().fold(false, |res, elem| res || prd(elem))
     for elem in set {
         if prd(elem) {
@@ -193,7 +203,7 @@ pub fn set_any<T>(prd: fn(T) -> bool, set: BTreeSet<T>) -> bool {
     false
 }
 
-pub fn set_all<T>(prd: fn(T) -> bool, set: BTreeSet<T>) -> bool {
+fn _set_all<T>(prd: fn(T) -> bool, set: BTreeSet<T>) -> bool {
     // set.into_iter().fold(true, |res, elem| res && prd(elem))
     for elem in set {
         if !prd(elem) {
@@ -204,8 +214,8 @@ pub fn set_all<T>(prd: fn(T) -> bool, set: BTreeSet<T>) -> bool {
 }
 
 impl<'a> CNF<'a> {
-    pub fn new(ds: BTreeSet<Disjunction<'a>>) -> Self {
-        Self { ds }
+    pub fn new(ds: Vec<Disjunction<'a>>) -> Self {
+        Self { ds: ds.into_iter().collect() }
     }
 
     /// Convert a 'CNF' to a 'Set' of 'Disjunction's.  Mostly useful if
@@ -224,7 +234,7 @@ impl<'a> CNF<'a> {
     /// Note that @'toCNF' 'True' = cTrue@.  Hence @'dcPublic' = 'DCLabel'
     /// cTrue cTrue@.
     pub fn as_true() -> Self {
-        Self::new(BTreeSet::new())
+        Self::new(vec![])
     }
 
     /// A 'CNF' that is always @False@.  If @'dcSecrecy' = cFalse@, then

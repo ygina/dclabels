@@ -98,6 +98,20 @@ impl<'a> BitOr for CNF<'a> {
 }
 
 impl<'a> DCLabel<'a> {
+    /// The primary way of creating a 'DCLabel'.  The secrecy component
+    /// goes on the left, while the integrity component goes on the right,
+    /// e.g.:
+    ///
+    /// > label = secrecyCNF %% integrityCNF
+    pub fn new<T: Into<CNF<'a>>, U: Into<CNF<'a>>>(
+        secrecy: T,
+        integrity: U,
+    ) -> Self {
+        let s: CNF = secrecy.into();
+        let i: CNF = integrity.into();
+        s % i
+    }
+
     /// dcPublic = True %% True
     ///
     /// This label corresponds to public data with no integrity guarantees.
@@ -108,25 +122,6 @@ impl<'a> DCLabel<'a> {
     /// minimum authority such that @dcPublic &#x2291;&#x1d62; (s %% i)@.
     pub fn public() -> Self {
         CNF::as_true() % CNF::as_true()
-    }
-
-    /// The primary way of creating a 'DCLabel'.  The secrecy component
-    /// goes on the left, while the integrity component goes on the right,
-    /// e.g.:
-    ///
-    /// > label = secrecyCNF %% integrityCNF
-    ///
-    /// Unlike the 'DCLabel' constructor, the arguments can be any instance
-    /// of 'ToCNF'.  @%%@ has fixity:
-    ///
-    /// > infix 6 %%
-    pub fn new<T: Into<CNF<'a>>, U: Into<CNF<'a>>>(
-        secrecy: T,
-        integrity: U,
-    ) -> Self {
-        let s: CNF = secrecy.into();
-        let i: CNF = integrity.into();
-        s % i
     }
 
     pub fn lub(self, l2: DCLabel<'a>) -> DCLabel<'a> {
