@@ -1,7 +1,7 @@
 use std::cmp;
 use std::fmt;
 use std::collections::hash_map::DefaultHasher;
-use std::collections::HashSet;
+use std::collections::BTreeSet;
 use std::hash::{Hash, Hasher};
 
 pub type SetTag = u64;
@@ -60,21 +60,21 @@ impl<'a> fmt::Display for Principal<'a> {
 /// (by means of 'dToSet' and 'dFromList').
 #[derive(PartialEq)]
 pub struct Disjunction<'a> {
-    ps: HashSet<Principal<'a>>,
+    ps: BTreeSet<Principal<'a>>,
     tag: SetTag,
 }
 
 impl<'a> Disjunction<'a> {
     /// Expose the set of 'Principal's being ORed together in a
     /// 'Disjunction'.
-    pub fn to_set(&self) -> &HashSet<Principal<'a>> {
+    pub fn to_set(&self) -> &BTreeSet<Principal<'a>> {
         &self.ps
     }
 
     pub fn as_false() -> Self {
         Disjunction {
             tag: 0,
-            ps: HashSet::new(),
+            ps: BTreeSet::new(),
         }
     }
 
@@ -180,12 +180,18 @@ impl<'a> Into<Disjunction<'a>> for Vec<Principal<'a>> {
 /// halves of a 'DCLabel'.
 #[derive(PartialEq, Eq, PartialOrd, Ord)]
 pub struct CNF<'a> {
-    ds: Vec<Disjunction<'a>>,
+    ds: BTreeSet<Disjunction<'a>>,
 }
 
 impl<'a> CNF<'a> {
-    pub fn new(ds: Vec<Disjunction<'a>>) -> Self {
+    pub fn new(ds: BTreeSet<Disjunction<'a>>) -> Self {
         Self { ds }
+    }
+
+    /// Convert a 'CNF' to a 'Set' of 'Disjunction's.  Mostly useful if
+    /// you wish to serialize a 'DCLabel'.
+    pub fn to_set(&self) -> &BTreeSet<Disjunction> {
+        &self.ds
     }
 
     /// A 'CNF' that is always @True@--i.e., trivially satisfiable.  When
@@ -198,7 +204,7 @@ impl<'a> CNF<'a> {
     /// Note that @'toCNF' 'True' = cTrue@.  Hence @'dcPublic' = 'DCLabel'
     /// cTrue cTrue@.
     pub fn as_true() -> Self {
-        Self::new(vec![])
+        Self::new(BTreeSet::new())
     }
 
     /// A 'CNF' that is always @False@.  If @'dcSecrecy' = cFalse@, then
@@ -269,12 +275,6 @@ impl<'a> CNF<'a> {
     pub fn implies_cnf(&self, other: &CNF<'a>) -> bool {
         // cImplies c (CNF ds) = setAll (c `cImplies1`) ds
         unimplemented!()
-    }
-
-    /// Convert a 'CNF' to a 'Set' of 'Disjunction's.  Mostly useful if
-    /// you wish to serialize a 'DCLabel'.
-    pub fn to_set(&self) -> &Vec<Disjunction> {
-        &self.ds
     }
 }
 
