@@ -177,7 +177,7 @@ impl<'a> Into<Disjunction<'a>> for Vec<Principal<'a>> {
 /// A boolean formula in Conjunctive Normal Form.  @CNF@ is used to
 /// describe 'DCLabel' privileges, as well to provide each of the two
 /// halves of a 'DCLabel'.
-#[derive(PartialEq, Eq, PartialOrd, Ord)]
+#[derive(PartialEq, Eq, PartialOrd, Ord, Clone)]
 pub struct CNF<'a> {
     ds: BTreeSet<Disjunction<'a>>,
 }

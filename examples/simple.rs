@@ -7,19 +7,20 @@ fn main() {
     let carla : CNF = "carla".into();
     let djon : CNF  = "djon".into();
 
-    let s: CNF =  (alice | bob) & carla;
-    // // Simple integrity component example
-    // let i: CNF = alice & carla;
+    // TODO: find a way around these clones
+    let s: CNF = (alice.clone() | bob.clone()) & carla.clone();
+    // Simple integrity component example
+    let i: CNF = alice.clone() & carla.clone();
 
-    // // Simple label
-    // let l1: DCLabel = s % i;
-    // // Simple label
-    // let l2 = djon % alice;
+    // Simple label
+    let l1: DCLabel = s % i;
+    // Simple label
+    let l2 = djon.clone() % alice.clone();
 
-    // // Creating privilege using constructor from TCB
+    // Creating privilege using constructor from TCB
     // let p = Priv::new(alice & carla);
-    // println!("Label 1: {}", l1);
-    // println!("Label 2: {}", l2);
+    println!("Label 1: {}", l1);
+    println!("Label 2: {}", l2);
     // println!("Join of labels: {}", DCLabel::lub(l1, l2));
     // println!("Meet of labels: {}", DCLabel::glb(l1, l2));
     // println!("Privileges: {}", p);

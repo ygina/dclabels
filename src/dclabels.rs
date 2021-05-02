@@ -51,22 +51,29 @@ pub struct DCLabel<'a> {
 
 impl<'a> fmt::Display for DCLabel<'a> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        // instance Show DCLabel where
-        //   showsPrec d (DCLabel sec int) =
-        //     showParen (d > 5) $ shows sec . (" %% " ++) . shows int
-        unimplemented!()
+        write!(f, "{} %% {}", self.dc_secrecy, self.dc_integrity)
     }
 }
 
 impl<'a> fmt::Debug for DCLabel<'a> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        // instance Read DCLabel where
-        //   readPrec = parens $ prec 5 $ do
-        //     sec <- readPrec
-        //     Symbol "%%" <- lexP
-        //     int <- readPrec
-        //     return $ DCLabel sec int
-        unimplemented!()
+        write!(f, "{:?} %% {:?}", self.dc_secrecy, self.dc_integrity)
+    }
+}
+
+impl<'a> Rem for CNF<'a> {
+    type Output = DCLabel<'a>;
+
+    /// The primary way of creating a 'DCLabel'.  The secrecy component
+    /// goes on the left, while the integrity component goes on the right,
+    /// e.g.:
+    ///
+    /// > label = secrecyCNF %% integrityCNF
+    fn rem(self, rhs: Self) -> Self::Output {
+        DCLabel {
+            dc_secrecy: self,
+            dc_integrity: rhs,
+        }
     }
 }
 
