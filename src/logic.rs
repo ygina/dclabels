@@ -297,6 +297,10 @@ impl<'a> CNF<'a> {
         }
         true
     }
+
+    pub fn speaks_for(&self, cnf: &CNF<'a>) -> bool {
+        self.implies(cnf)
+    }
 }
 
 impl<'a> fmt::Display for CNF<'a> {

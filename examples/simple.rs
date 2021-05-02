@@ -18,7 +18,7 @@ fn main() {
     let l2 = djon.clone() % alice.clone();
 
     // Creating privilege using constructor from TCB
-    // let p = Priv::new(alice & carla);
+    let p: Priv = alice.clone() & carla.clone();
     // Label 1: carla /\ (alice \/ bob) %% alice /\ carla
     println!("Label 1: {}", l1);
     // Label 2: djon %% alice
@@ -27,10 +27,11 @@ fn main() {
     println!("Join of labels: {}", l1.clone().lub(l2.clone()));
     // Meet of labels: (carla \/ djon) /\ (alice \/ bob \/ djon) %% alice /\ carla
     println!("Meet of labels: {}", l1.clone().glb(l2.clone()));
-    // // Privileges: PrivTCB (alice /\ carla)
-    // println!("Privileges: {}", p);
-    // Label 1 flows to Label 2? False
-    println!("Label 1 flows to Label 2? {}", l1.can_flow_to(&l2)); // false
-    // println!("Label 1 flows to Label 2 given privileges? {}",
-    //     DCLabel::can_flow_to_p(l1, l2)); // true
+    // Privileges: (alice /\ carla)
+    println!("Privileges: {}", p);
+    // Label 1 flows to Label 2? false
+    println!("Label 1 flows to Label 2? {}", l1.can_flow_to(&l2));
+    // Label 1 flows to Label 2 given privileges? true
+    println!("Label 1 flows to Label 2 given privileges? {}",
+        l1.can_flow_to_p(&l2, &p));
 }

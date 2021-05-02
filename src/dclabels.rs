@@ -147,19 +147,20 @@ impl<'a> DCLabel<'a> {
         l2.secrecy.implies(&self.secrecy)
             && self.integrity.implies(&l2.integrity)
     }
-}
 
-// instance SpeaksFor CNF where
-//   {-# INLINE speaksFor #-}
-//   speaksFor = cImplies
-
-impl<'a> CNF<'a> {
-    pub fn dc_max_downgrade(label: &DCLabel<'a>) -> DCLabel<'a> {
-        // dcMaxDowngrade p (DCLabel (CNF ds) int) = DCLabel sec (cUnion p int)
-        //   where sec = CNF $ Set.filter (not . cImplies1 p) ds
-        unimplemented!()
+    pub fn can_flow_to_p(&self, l2: &DCLabel<'a>, p: &Priv<'a>) -> bool {
+        p.clone().union(l2.secrecy.clone()).implies(&self.secrecy)
+            && p.clone().union(self.integrity.clone()).implies(&l2.integrity)
     }
 }
+
+// impl<'a> CNF<'a> {
+//     pub fn dc_max_downgrade(label: &DCLabel<'a>) -> DCLabel<'a> {
+//         // dcMaxDowngrade p (DCLabel (CNF ds) int) = DCLabel sec (cUnion p int)
+//         //   where sec = CNF $ Set.filter (not . cImplies1 p) ds
+//         unimplemented!()
+//     }
+// }
 
 // instance PrivDesc DCLabel CNF where
 //   downgradeP = dcMaxDowngrade
