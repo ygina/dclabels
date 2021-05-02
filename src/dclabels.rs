@@ -38,26 +38,26 @@ use crate::logic::*;
 
 pub type Priv<'a> = CNF<'a>;
 
-#[derive(PartialEq, Eq, PartialOrd, Ord)]
+#[derive(PartialEq, Eq, PartialOrd, Ord, Clone)]
 pub struct DCLabel<'a> {
     /// Describes the authority required to make
     /// the data public.
-    dc_secrecy: CNF<'a>,
+    secrecy: CNF<'a>,
     /// Describes the authority with which
     /// immutable data was endorsed, or the
     /// authority required to modify mutable data.
-    dc_integrity: CNF<'a>,
+    integrity: CNF<'a>,
 }
 
 impl<'a> fmt::Display for DCLabel<'a> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "{} %% {}", self.dc_secrecy, self.dc_integrity)
+        write!(f, "{} %% {}", self.secrecy, self.integrity)
     }
 }
 
 impl<'a> fmt::Debug for DCLabel<'a> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "{:?} %% {:?}", self.dc_secrecy, self.dc_integrity)
+        write!(f, "{:?} %% {:?}", self.secrecy, self.integrity)
     }
 }
 
@@ -71,8 +71,8 @@ impl<'a> Rem for CNF<'a> {
     /// > label = secrecyCNF %% integrityCNF
     fn rem(self, rhs: Self) -> Self::Output {
         DCLabel {
-            dc_secrecy: self,
-            dc_integrity: rhs,
+            secrecy: self,
+            integrity: rhs,
         }
     }
 }
@@ -107,8 +107,7 @@ impl<'a> DCLabel<'a> {
     /// @(s %% i) &#x2291;&#x209b; dcPublic@, while @i@ is the exact
     /// minimum authority such that @dcPublic &#x2291;&#x1d62; (s %% i)@.
     pub fn public() -> Self {
-        // dcPublic = True %% True
-        unimplemented!()
+        CNF::as_true() % CNF::as_true()
     }
 
     /// The primary way of creating a 'DCLabel'.  The secrecy component
@@ -121,19 +120,32 @@ impl<'a> DCLabel<'a> {
     /// of 'ToCNF'.  @%%@ has fixity:
     ///
     /// > infix 6 %%
-    pub fn new<T: Into<CNF<'a>>, U: Into<CNF<'a>>>(secrecy: T, integrity: U) -> Self {
-        // (%%) :: (ToCNF a, ToCNF b) => a -> b -> DCLabel
-        // a %% b = toCNF a `DCLabel` toCNF b
-        // infix 6 %%
-        unimplemented!()
+    pub fn new<T: Into<CNF<'a>>, U: Into<CNF<'a>>>(
+        secrecy: T,
+        integrity: U,
+    ) -> Self {
+        let s: CNF = secrecy.into();
+        let i: CNF = integrity.into();
+        s % i
     }
 
-    pub fn label(&self) {
-        // instance Label DCLabel where
-        //   lub (DCLabel s1 i1) (DCLabel s2 i2) = DCLabel (cUnion s1 s2) (cOr i1 i2)
-        //   glb (DCLabel s1 i1) (DCLabel s2 i2) = DCLabel (cOr s1 s2) (cUnion i1 i2)
-        //   canFlowTo (DCLabel s1 i1) (DCLabel s2 i2) = cImplies s2 s1 && cImplies i1 i2
-        unimplemented!()
+    pub fn lub(self, l2: DCLabel<'a>) -> DCLabel<'a> {
+        DCLabel {
+            secrecy: self.secrecy.union(l2.secrecy),
+            integrity: self.integrity.or(l2.integrity),
+        }
+    }
+
+    pub fn glb(self, l2: DCLabel<'a>) -> DCLabel<'a> {
+        DCLabel {
+            secrecy: self.secrecy.or(l2.secrecy),
+            integrity: self.integrity.union(l2.integrity),
+        }
+    }
+
+    pub fn can_flow_to(&self, l2: &DCLabel<'a>) -> bool {
+        l2.secrecy.implies(&self.secrecy)
+            && self.integrity.implies(&l2.integrity)
     }
 }
 

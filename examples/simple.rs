@@ -19,21 +19,18 @@ fn main() {
 
     // Creating privilege using constructor from TCB
     // let p = Priv::new(alice & carla);
+    // Label 1: carla /\ (alice \/ bob) %% alice /\ carla
     println!("Label 1: {}", l1);
+    // Label 2: djon %% alice
     println!("Label 2: {}", l2);
-    // println!("Join of labels: {}", DCLabel::lub(l1, l2));
-    // println!("Meet of labels: {}", DCLabel::glb(l1, l2));
+    // Join of labels: carla /\ djon /\ (alice \/ bob) %% alice
+    println!("Join of labels: {}", l1.clone().lub(l2.clone()));
+    // Meet of labels: (carla \/ djon) /\ (alice \/ bob \/ djon) %% alice /\ carla
+    println!("Meet of labels: {}", l1.clone().glb(l2.clone()));
+    // // Privileges: PrivTCB (alice /\ carla)
     // println!("Privileges: {}", p);
-    // println!("Label 1 flows to Label 2? {}", DCLabel::can_flow_to(l1, l2));
-    // println!("Label 1 flows to Label 2 given privileges? {}",
-    //     DCLabel::can_flow_to_p(l1, l2));
-
-    // Output:
-    // Label 1: carla & (alice | bob) % alice & carla
-    // Label 2: djon % alice
-    // Join of labels: carla & djon & (alice | bob) % alice
-    // Meet of labels: (carla | djon) & (alice | bob | djon) % alice & carla
-    // Privileges: PrivTCB (alice & carla)
     // Label 1 flows to Label 2? False
-    // Label 1 flows to Label 2 given privileges? True
+    println!("Label 1 flows to Label 2? {}", l1.can_flow_to(&l2)); // false
+    // println!("Label 1 flows to Label 2 given privileges? {}",
+    //     DCLabel::can_flow_to_p(l1, l2)); // true
 }
